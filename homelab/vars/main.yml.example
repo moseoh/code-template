@@ -1,0 +1,10 @@
+# 홈랩 초기설정 변수 예제
+# 이 파일을 main.yml로 복사하고 실제 값으로 변경하세요
+
+# 타겟 서버 정보
+target_ip: "192.168.0.101"
+target_username: "ubuntu"
+target_password: "your_password_here"
+
+# 로컬 공개키 경로
+local_public_key_path: "~/.ssh/id_rsa.pub"

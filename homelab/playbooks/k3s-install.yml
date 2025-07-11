@@ -1,0 +1,73 @@
+---
+- name: K3s 클러스터 설치
+  hosts: homelab
+  become: yes
+
+  tasks:
+    - name: K3s 설치 (단일 서버)
+      ansible.builtin.shell: |
+        curl -sfL https://get.k3s.io | sh -
+      args:
+        creates: /usr/local/bin/k3s
+
+    - name: K3s 설치 완료 대기
+      ansible.builtin.wait_for:
+        path: /etc/rancher/k3s/k3s.yaml
+        timeout: 180
+
+    - name: K3s 클러스터 상태 확인
+      ansible.builtin.command: k3s kubectl get nodes
+      register: k3s_nodes
+      changed_when: false
+      retries: 5
+      delay: 10
+      until: k3s_nodes.rc == 0
+
+    - name: 로컬 kubeconfig 디렉토리 생성
+      ansible.builtin.file:
+        path: ~/.kube
+        state: directory
+        mode: "0755"
+      delegate_to: localhost
+      become: no
+
+    - name: kubeconfig 파일 로컬로 복사
+      ansible.builtin.fetch:
+        src: /etc/rancher/k3s/k3s.yaml
+        dest: ~/.kube/config
+        flat: yes
+      become: yes
+
+    - name: kubeconfig에서 서버 IP 변경 (127.0.0.1 → 실제 IP)
+      ansible.builtin.replace:
+        path: ~/.kube/config
+        regexp: 'https://127\.0\.0\.1:6443'
+        replace: "https://{{ target_ip }}:6443"
+      delegate_to: localhost
+      become: no
+
+    - name: kubeconfig 파일 권한 설정
+      ansible.builtin.file:
+        path: ~/.kube/config
+        mode: "0600"
+      delegate_to: localhost
+      become: no
+
+    - name: 클러스터 정보 출력
+      ansible.builtin.debug:
+        msg: |
+          K3s 클러스터가 성공적으로 설치되었습니다!
+
+          클러스터 노드:
+          {{ k3s_nodes.stdout }}
+
+          로컬에서 사용법:
+          - kubectl get nodes
+          - kubectl get pods -A
+          - kubectl cluster-info
+
+          서버에서 사용법:
+          - SSH 접속: ssh {{ target_username }}@{{ target_ip }}
+          - k3s kubectl get nodes
+
+          kubeconfig 위치: ~/.kube/config
