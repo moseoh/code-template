@@ -1,0 +1,65 @@
+---
+- name: Ubuntu 24 홈랩 초기설정
+  hosts: homelab
+  become: yes
+
+  tasks:
+    - name: sources.list.d 디렉토리 백업
+      ansible.builtin.copy:
+        src: /etc/apt/sources.list.d/
+        dest: /etc/apt/sources.list.d.backup/
+        remote_src: yes
+
+    - name: 기존 ubuntu.sources 파일 찾기
+      ansible.builtin.find:
+        paths: /etc/apt/sources.list.d/
+        patterns: "ubuntu.sources"
+      register: ubuntu_sources_files
+
+    - name: ubuntu.sources 파일을 카카오 미러로 변경
+      ansible.builtin.replace:
+        path: "{{ item.path }}"
+        regexp: 'http://kr\.archive\.ubuntu\.com/ubuntu'
+        replace: "http://mirror.kakao.com/ubuntu"
+      loop: "{{ ubuntu_sources_files.files }}"
+      when: ubuntu_sources_files.files | length > 0
+
+    - name: APT 패키지 목록 업데이트
+      ansible.builtin.apt:
+        update_cache: yes
+
+    - name: 시스템 패키지 업그레이드
+      ansible.builtin.apt:
+        upgrade: dist
+
+    - name: 타임존을 Asia/Seoul로 설정
+      ansible.builtin.timezone:
+        name: Asia/Seoul
+
+    - name: 공개키 복사
+      ansible.builtin.copy:
+        src: "{{ local_public_key_path }}"
+        dest: "/home/{{ target_username }}/.ssh/authorized_keys"
+        owner: "{{ target_username }}"
+        group: "{{ target_username }}"
+        mode: "0600"
+
+    - name: SSH 보안 설정 파일 생성
+      ansible.builtin.copy:
+        dest: /etc/ssh/sshd_config.d/99-homelab-security.conf
+        content: |
+          # 홈랩 보안 설정 (cloud-init보다 높은 우선순위)
+          PasswordAuthentication no
+          PubkeyAuthentication yes
+          PermitRootLogin no
+          PermitEmptyPasswords no
+          ChallengeResponseAuthentication no
+          UsePAM yes
+        mode: "0644"
+      notify: restart sshd
+
+  handlers:
+    - name: restart sshd
+      ansible.builtin.systemd:
+        name: ssh
+        state: restarted
