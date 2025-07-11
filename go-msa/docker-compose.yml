@@ -1,0 +1,139 @@
+x-app-healthcheck: &app-healthcheck
+  test: [ "CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:8080/health || exit 1" ]
+  interval: 30s
+  timeout: 5s
+  retries: 3
+  start_period: 60s
+
+x-base-go-service: &base-go-service
+  restart: unless-stopped
+  networks:
+    - go-msa-network
+  healthcheck: *app-healthcheck
+
+x-depends-on-database: &depends-on-database
+  depends_on:
+    database_initializer:
+      condition: service_completed_successfully
+    database:
+      condition: service_healthy
+
+x-db-environment: &db-environment
+  DB_HOST: database
+  DB_PORT: 5432
+  DB_USER: postgres
+  DB_PASSWORD: postgres
+  DB_SSLMODE: disable
+
+services:
+  api-gateway:
+    <<: *base-go-service
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - MODULE=api-gateway
+    image: go-msa/api-gateway
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    depends_on:
+      auth_service:
+        condition: service_healthy
+      business_service:
+        condition: service_healthy
+
+  auth_service:
+    <<: [*base-go-service, *depends-on-database]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - MODULE=services/auth
+    image: go-msa/auth-service
+    container_name: auth_service
+    environment:
+      <<: *db-environment
+      DB_NAME: auth_service
+
+  business_service:
+    <<: [*base-go-service, *depends-on-database]
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        - MODULE=services/business
+    image: go-msa/business-service
+    container_name: business_service
+    environment:
+      <<: *db-environment
+      DB_NAME: business_service
+
+  business_service_flyway_migrate:
+    image: flyway/flyway:11-alpine
+    container_name: business_service_flyway_migrate
+    command: migrate
+    environment:
+      DB_HOST: database
+      DB_PORT: 5432
+      DB_USER: postgres
+      DB_PASSWORD: postgres
+      DB_NAME: business_service
+    volumes:
+      - ./services/business/db/migration:/flyway/db/migration:ro
+      - ./services/business/flyway.conf:/flyway/conf/flyway.conf:ro
+    networks:
+      - go-msa-network
+    depends_on:
+      database_initializer:
+        condition: service_completed_successfully
+      database:
+        condition: service_healthy
+    restart: no
+
+  database_initializer:
+    image: postgres:17-alpine
+    container_name: db-initializer
+    depends_on:
+      database: # DB 서버가 준비되어야 실행
+        condition: service_healthy
+    environment:
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGHOST: database
+      PGPORT: 5432
+    networks:
+      - go-msa-network
+    volumes:
+      - ./scripts/init-databases.sh:/docker-entrypoint-initdb.d/init-databases.sh
+    entrypoint: [ "/bin/sh", "/docker-entrypoint-initdb.d/init-databases.sh" ]
+    restart: no
+
+  database:
+    image: postgres:17-alpine
+    container_name: postgres
+    environment:
+      POSTGRES_DB: default
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - go-msa-network
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -U postgres -d default" ]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 60s
+    restart: unless-stopped
+
+networks:
+  go-msa-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+    driver: local
