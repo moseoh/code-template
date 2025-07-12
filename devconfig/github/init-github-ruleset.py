@@ -137,7 +137,7 @@ def create_or_update_ruleset(owner, repo, ruleset_id=None):
             {
                 "actor_type": "RepositoryRole",
                 "bypass_mode": "pull_request",
-                "actor_id": 5 # admin
+                "actor_id": 5 # repository admin
             }
         ]
     }
