@@ -56,6 +56,8 @@ if [ $? -ne 0 ]; then
     echo "WakeOnLAN 설정 실패!"
     # exit 1
 fi
+echo "===== WakeOnLAN 설정 완료 ====="
+echo ""
 
 # K3s 설치
 echo "===== K3s 설치 시작 ====="
