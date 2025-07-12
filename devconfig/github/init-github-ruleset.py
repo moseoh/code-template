@@ -133,7 +133,13 @@ def create_or_update_ruleset(owner, repo, ruleset_id=None):
                 "parameters": {}
             }
         ],
-        "bypass_actors": []
+        "bypass_actors": [
+            {
+                "actor_type": "RepositoryRole",
+                "bypass_mode": "pull_request",
+                "actor_id": 5 # admin
+            }
+        ]
     }
     
     # JSON 파일로 임시 저장
