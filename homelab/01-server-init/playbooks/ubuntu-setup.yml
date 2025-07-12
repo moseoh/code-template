@@ -4,59 +4,225 @@
   become: yes
 
   tasks:
-    - name: sources.list.d 디렉토리 백업
-      ansible.builtin.copy:
-        src: /etc/apt/sources.list.d/
-        dest: /etc/apt/sources.list.d.backup/
-        remote_src: yes
+    # ===== Ubuntu 기본 설정 =====
+    - name: Ubuntu 기본 설정
+      block:
+        - name: sources.list.d 디렉토리 백업
+          ansible.builtin.copy:
+            src: /etc/apt/sources.list.d/
+            dest: /etc/apt/sources.list.d.backup/
+            remote_src: yes
 
-    - name: 기존 ubuntu.sources 파일 찾기
-      ansible.builtin.find:
-        paths: /etc/apt/sources.list.d/
-        patterns: "ubuntu.sources"
-      register: ubuntu_sources_files
+        - name: 기존 ubuntu.sources 파일 찾기
+          ansible.builtin.find:
+            paths: /etc/apt/sources.list.d/
+            patterns: "ubuntu.sources"
+          register: ubuntu_sources_files
 
-    - name: ubuntu.sources 파일을 카카오 미러로 변경
-      ansible.builtin.replace:
-        path: "{{ item.path }}"
-        regexp: 'http://kr\.archive\.ubuntu\.com/ubuntu'
-        replace: "http://mirror.kakao.com/ubuntu"
-      loop: "{{ ubuntu_sources_files.files }}"
-      when: ubuntu_sources_files.files | length > 0
+        - name: ubuntu.sources 파일을 카카오 미러로 변경
+          ansible.builtin.replace:
+            path: "{{ item.path }}"
+            regexp: 'http://kr\.archive\.ubuntu\.com/ubuntu'
+            replace: "http://mirror.kakao.com/ubuntu"
+          loop: "{{ ubuntu_sources_files.files }}"
+          when: ubuntu_sources_files.files | length > 0
 
-    - name: APT 패키지 목록 업데이트
-      ansible.builtin.apt:
-        update_cache: yes
+        - name: APT 패키지 목록 업데이트
+          ansible.builtin.apt:
+            update_cache: yes
 
-    - name: 시스템 패키지 업그레이드
-      ansible.builtin.apt:
-        upgrade: dist
+        - name: 시스템 패키지 업그레이드
+          ansible.builtin.apt:
+            upgrade: dist
 
-    - name: 타임존을 Asia/Seoul로 설정
-      ansible.builtin.timezone:
-        name: Asia/Seoul
+        - name: 타임존을 Asia/Seoul로 설정
+          ansible.builtin.timezone:
+            name: Asia/Seoul
 
-    - name: 공개키 복사
-      ansible.builtin.copy:
-        src: "{{ local_public_key_path }}"
-        dest: "/home/{{ target_username }}/.ssh/authorized_keys"
-        owner: "{{ target_username }}"
-        group: "{{ target_username }}"
-        mode: "0600"
+        - name: 공개키 복사
+          ansible.builtin.copy:
+            src: "{{ local_public_key_path }}"
+            dest: "/home/{{ target_username }}/.ssh/authorized_keys"
+            owner: "{{ target_username }}"
+            group: "{{ target_username }}"
+            mode: "0600"
 
-    - name: SSH 보안 설정 파일 생성
-      ansible.builtin.copy:
-        dest: /etc/ssh/sshd_config.d/99-homelab-security.conf
-        content: |
-          # 홈랩 보안 설정 (cloud-init보다 높은 우선순위)
-          PasswordAuthentication no
-          PubkeyAuthentication yes
-          PermitRootLogin no
-          PermitEmptyPasswords no
-          ChallengeResponseAuthentication no
-          UsePAM yes
-        mode: "0644"
-      notify: restart sshd
+        - name: SSH 보안 설정 파일 생성
+          ansible.builtin.copy:
+            dest: /etc/ssh/sshd_config.d/99-homelab-security.conf
+            content: |
+              # 홈랩 보안 설정 (cloud-init보다 높은 우선순위)
+              PasswordAuthentication no
+              PubkeyAuthentication yes
+              PermitRootLogin no
+              PermitEmptyPasswords no
+              ChallengeResponseAuthentication no
+              UsePAM yes
+            mode: "0644"
+          notify: restart sshd
+      tags:
+        - initial_setup
+        - system_config
+        - security
+
+    # ===== Swap 메모리 설정 =====
+    - name: Swap 메모리 설정
+      block:
+        - name: 현재 메모리 정보 확인
+          ansible.builtin.command: free --giga
+          register: memory_info
+          changed_when: false
+
+        - name: 메모리 정보 출력
+          ansible.builtin.debug:
+            msg: "{{ memory_info.stdout_lines }}"
+
+        - name: RAM 용량 추출 (GB 단위)
+          ansible.builtin.set_fact:
+            ram_size_gb: "{{ (memory_info.stdout_lines[1].split()[1] | int) }}"
+
+        - name: 현재 swap 상태 확인
+          ansible.builtin.command: swapon --show
+          register: swap_status
+          changed_when: false
+          failed_when: false
+
+        - name: 기존 swap 비활성화
+          ansible.builtin.command: swapoff -a
+          when: swap_status.stdout != ""
+
+        - name: 기존 swap 파일 삭제 (/swap.img)
+          ansible.builtin.file:
+            path: /swap.img
+            state: absent
+          when: swap_status.stdout != ""
+
+        - name: fstab에서 기존 swap 엔트리 제거
+          ansible.builtin.lineinfile:
+            path: /etc/fstab
+            regexp: '.*swap.*'
+            state: absent
+
+        - name: 새로운 swap 파일 생성 (RAM 크기와 동일)
+          ansible.builtin.command: |
+            fallocate -l {{ ram_size_gb }}G /swap.img
+          args:
+            creates: /swap.img
+
+        - name: swap 파일 권한 설정
+          ansible.builtin.file:
+            path: /swap.img
+            mode: "0600"
+
+        - name: swap 파일 포맷
+          ansible.builtin.command: mkswap /swap.img
+          register: mkswap_result
+          changed_when: "'Setting up swapspace' in mkswap_result.stdout"
+
+        - name: swap 활성화
+          ansible.builtin.command: swapon /swap.img
+
+        - name: fstab에 새 swap 항목 추가
+          ansible.builtin.lineinfile:
+            path: /etc/fstab
+            line: '/swap.img       none    swap    sw      0       0'
+            insertafter: EOF
+      tags:
+        - swap_setup
+        - memory_config
+
+    # ===== LVM 볼륨 설정 =====
+    - name: LVM 볼륨 설정
+      block:
+        - name: LVM 관련 패키지 설치
+          ansible.builtin.apt:
+            name:
+              - lvm2
+            state: present
+
+        - name: 현재 디스크 정보 확인
+          ansible.builtin.command: lsblk -f
+          register: disk_info
+          changed_when: false
+
+        - name: 디스크 정보 출력
+          ansible.builtin.debug:
+            msg: "{{ disk_info.stdout_lines }}"
+
+        - name: 파티션 정보 확인 (JSON 형태)
+          ansible.builtin.command: lsblk -J
+          register: lsblk_json
+          changed_when: false
+
+        - name: 메인 디스크 식별
+          ansible.builtin.set_fact:
+            main_disk: "{{ (lsblk_json.stdout | from_json).blockdevices | selectattr('type', 'equalto', 'disk') | selectattr('children', 'defined') | first }}"
+
+        - name: 사용 가능한 공간 확인
+          ansible.builtin.command: parted /dev/{{ main_disk.name }} unit GB print free
+          register: parted_output
+          changed_when: false
+
+        - name: 파티션 정보 출력
+          ansible.builtin.debug:
+            msg: "{{ parted_output.stdout_lines }}"
+
+        - name: 기존 볼륨 그룹 확인
+          ansible.builtin.command: vgdisplay ubuntu-vg
+          register: existing_vg
+          changed_when: false
+          failed_when: false
+
+        - name: 기존 LVM 구조 정보 출력
+          ansible.builtin.debug:
+            msg: "기존 ubuntu-vg 볼륨 그룹이 발견되었습니다."
+          when: existing_vg.rc == 0
+
+        - name: 루트 논리 볼륨 경로 확인
+          ansible.builtin.shell: |
+            df / | tail -1 | awk '{print $1}' | grep -E '/dev/mapper/|/dev/.*-.*/'
+          register: root_lv_path
+          changed_when: false
+          when: existing_vg.rc == 0
+
+        - name: 루트 볼륨 경로 출력
+          ansible.builtin.debug:
+            msg: "감지된 루트 볼륨 경로: {{ root_lv_path.stdout }}"
+          when: existing_vg.rc == 0 and root_lv_path.stdout != ""
+
+        - name: 기존 논리 볼륨을 모든 여유 공간으로 확장
+          ansible.builtin.command: lvextend -l +100%FREE {{ root_lv_path.stdout }}
+          when: existing_vg.rc == 0 and root_lv_path.stdout != ""
+          register: lv_extend_result
+          failed_when: false
+
+        - name: 파일시스템 확장 (ext4)
+          ansible.builtin.command: resize2fs {{ root_lv_path.stdout }}
+          when: lv_extend_result.rc == 0
+          register: fs_extend_result
+
+        - name: 최종 LVM 상태 확인
+          ansible.builtin.command: vgdisplay
+          register: final_vg_status
+          changed_when: false
+
+        - name: 최종 LVM 상태 출력
+          ansible.builtin.debug:
+            msg: "{{ final_vg_status.stdout_lines }}"
+
+        - name: LVM 확장 결과 출력
+          ansible.builtin.debug:
+            msg: "루트 볼륨이 모든 여유 공간으로 확장되었습니다."
+          when: lv_extend_result.rc == 0 and fs_extend_result.rc == 0
+
+        - name: LVM 확장 실패 안내
+          ansible.builtin.debug:
+            msg: "LVM 확장에 실패했거나 이미 최대 크기입니다."
+          when: lv_extend_result.rc != 0
+      tags:
+        - lvm_setup
+        - volume_config
+        - storage
 
   handlers:
     - name: restart sshd
