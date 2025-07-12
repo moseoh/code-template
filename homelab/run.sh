@@ -16,6 +16,7 @@ fi
 
 echo "설정 확인:"
 echo "- Ubuntu 24 초기설정 (APT 미러, SSH 보안, 타임존)"
+echo "- WakeOnLAN 설정"
 echo "- K3s 클러스터 설치"
 echo ""
 
@@ -47,6 +48,14 @@ fi
 
 echo "===== Ubuntu 초기설정 완료 ====="
 echo ""
+
+# WakeOnLAN 설정
+echo "===== WakeOnLAN 설정 시작 ====="
+ansible-playbook playbooks/wakeonlan-setup.yml -e @vars/main.yml
+if [ $? -ne 0 ]; then
+    echo "WakeOnLAN 설정 실패!"
+    # exit 1
+fi
 
 # K3s 설치
 echo "===== K3s 설치 시작 ====="
