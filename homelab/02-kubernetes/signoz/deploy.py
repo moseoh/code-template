@@ -6,8 +6,10 @@ SigNoz 배포 스크립트
 
 import subprocess
 import sys
-import time
 from pathlib import Path
+
+# 글로벌 설정
+NAMESPACE = "signoz"
 
 
 def run_command(cmd: list[str], check: bool = True) -> subprocess.CompletedProcess:
@@ -70,7 +72,6 @@ def deploy_signoz():
     """SigNoz 애플리케이션 배포"""
     print("\n🚀 SigNoz 애플리케이션 배포 시작...")
     
-    namespace = "signoz"
     signoz_values = Path(__file__).parent / "signoz-values.yaml"
     
     try:
@@ -83,12 +84,12 @@ def deploy_signoz():
         run_command(["helm", "repo", "update"])
         
         # SigNoz 애플리케이션 설치
-        print(f"⚙️  SigNoz 애플리케이션을 {namespace} 네임스페이스에 설치 중...")
+        print(f"⚙️  SigNoz 애플리케이션을 {NAMESPACE} 네임스페이스에 설치 중...")
         print("⏳ 설치에는 몇 분이 소요될 수 있습니다...")
         
         install_cmd = [
             "helm", "upgrade", "--install", "signoz", "signoz/signoz",
-            "--namespace", namespace,
+            "--namespace", NAMESPACE,
             "--create-namespace",
             "--wait",
             "--timeout", "1h",
@@ -108,17 +109,16 @@ def deploy_k8s_infra():
     """SigNoz K8s 인프라 (메트릭 수집) 배포"""
     print("\n📊 SigNoz K8s 인프라 배포 시작...")
     
-    namespace = "signoz"
     k8s_values = Path(__file__).parent / "signoz-k8s-values.yaml"
     
     try:
         # K8s 인프라 설치
-        print(f"⚙️  K8s 메트릭 수집 에이전트를 {namespace} 네임스페이스에 설치 중...")
+        print(f"⚙️  K8s 메트릭 수집 에이전트를 {NAMESPACE} 네임스페이스에 설치 중...")
         print("⏳ DaemonSet 배포에는 1-2분이 소요될 수 있습니다...")
         
         install_cmd = [
             "helm", "upgrade", "--install", "k8s-infra", "signoz/k8s-infra",
-            "--namespace", namespace,
+            "--namespace", NAMESPACE,
             "--wait",
             "--timeout", "30m",
             "-f", str(k8s_values)
@@ -137,31 +137,30 @@ def verify_deployment():
     """배포 상태 확인"""
     print("\n🔍 배포 상태 확인 중...")
     
-    namespace = "signoz"
     
     try:
         # Pod 상태 확인
-        print(f"📊 {namespace} 네임스페이스의 Pod 상태:")
-        run_command(["kubectl", "get", "pods", "-n", namespace, "-o", "wide"])
+        print(f"📊 {NAMESPACE} 네임스페이스의 Pod 상태:")
+        run_command(["kubectl", "get", "pods", "-n", NAMESPACE, "-o", "wide"])
         
         # 서비스 상태 확인
-        print(f"\n🌐 {namespace} 네임스페이스의 서비스 상태:")
-        run_command(["kubectl", "get", "svc", "-n", namespace])
+        print(f"\n🌐 {NAMESPACE} 네임스페이스의 서비스 상태:")
+        run_command(["kubectl", "get", "svc", "-n", NAMESPACE])
         
         # DaemonSet 상태 확인 (K8s 인프라)
-        print(f"\n🔧 {namespace} 네임스페이스의 DaemonSet 상태:")
-        run_command(["kubectl", "get", "daemonset", "-n", namespace])
+        print(f"\n🔧 {NAMESPACE} 네임스페이스의 DaemonSet 상태:")
+        run_command(["kubectl", "get", "daemonset", "-n", NAMESPACE])
         
         # Helm 릴리스 상태 확인
         print("\n📋 Helm 릴리스 상태:")
-        run_command(["helm", "list", "-n", namespace])
+        run_command(["helm", "list", "-n", NAMESPACE])
         
         print("\n✅ 배포 상태 확인 완료!")
         
         # 접속 정보 안내
         print("\n📋 SigNoz 접속 정보:")
         print("1. 포트 포워딩을 통한 접속:")
-        print(f"   kubectl port-forward -n {namespace} svc/signoz 28080:8080")
+        print(f"   kubectl port-forward -n {NAMESPACE} svc/signoz 28080:8080")
         print("2. 브라우저에서 http://localhost:28080 접속")
         print("3. 기본 로그인 정보:")
         print("   - Email: admin@signoz.io")
