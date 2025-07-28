@@ -4,13 +4,15 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Convert;
 import jakarta.persistence.Entity;
 import jakarta.validation.constraints.Size;
+
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.reflections.Reflections;
 
+import com.moseoh.searchencrypteddata.utils.AESUtils;
 import java.lang.reflect.Field;
 import java.util.stream.Stream;
+import org.reflections.Reflections;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -35,12 +37,15 @@ class ValidationSchemaTest {
      * 따라서 가장 긴 결과가 나오는 <b>한글('기')을 기준</b>으로 테스트하여 DB 컬럼의 길이가 충분한지 엄격하게 확인합니다.
      *
      * @param entityClass 검증할 엔티티 클래스
+     *
      * @throws Exception 리플렉션 또는 컨버터 생성 시 발생할 수 있는 예외
      */
     @DisplayName("암호화 필드 검증: AESConverter의 @Size 대비 @Column(length)가 충분한가")
     @ParameterizedTest(name = "{0} 엔티티 검증")
     @MethodSource("entityProvider")
     void validateEncryptedColumnLength(Class<?> entityClass) throws Exception {
+        AESUtils aesUtils = new AESUtils();
+
         for (Field field : entityClass.getDeclaredFields()) {
             Size sizeAnn = field.getAnnotation(Size.class);
             Column columnAnn = field.getAnnotation(Column.class);
@@ -50,31 +55,40 @@ class ValidationSchemaTest {
                 continue;
             }
 
-            if (!convertAnn.converter().equals(AESConverter.class)) {
-                continue;
+            if (convertAnn.converter().equals(AESConverter.class)) {
+                AESConverter converter = new AESConverter(aesUtils);
+
+                String testInput = "기".repeat(sizeAnn.max());
+                String encryptedOutput = converter.convertToDatabaseColumn(testInput);
+
+                String errorMessage = String.format(
+                        "검증 실패! [%s.%s]: 원본 최대 길이(%d) -> 암호화된 길이(%d) > DB 컬럼 길이(%d)",
+                        entityClass.getSimpleName(),
+                        field.getName(),
+                        sizeAnn.max(),
+                        encryptedOutput.length(),
+                        columnAnn.length()
+                );
+
+                assertTrue(encryptedOutput.length() <= columnAnn.length(), errorMessage);
+
+                // [방법 2] Java 15+ Text Blocks (더 깔끔함)
+                System.out.printf(
+                        """
+                                검증 통과 ✅: [%s.%s] {
+                                    "원본 길이": %d,
+                                    "암호화 및 한글 처리 길이": %d,
+                                    "DB컬럼 길이": %d
+                                }
+                                %n""",
+                        entityClass.getSimpleName(),
+                        field.getName(),
+                        sizeAnn.max(),
+                        encryptedOutput.length(),
+                        columnAnn.length()
+                );
             }
 
-            AESConverter converter = new AESConverter();
-
-            String testInput = "기".repeat(sizeAnn.max());
-            String encryptedOutput = converter.convertToDatabaseColumn(testInput);
-
-            String errorMessage = String.format(
-                    "검증 실패! [%s.%s]: 원본 최대 길이(%d) -> 암호화된 길이(%d) > DB 컬럼 길이(%d)",
-                    entityClass.getSimpleName(), field.getName(),
-                    sizeAnn.max(), encryptedOutput.length(), columnAnn.length()
-            );
-
-            assertTrue(encryptedOutput.length() <= columnAnn.length(), errorMessage);
-
-            System.out.printf(
-                    "검증 통과 ✅: [%s.%s] (원본: %d, 암호화: %d, DB컬럼: %d)%n",
-                    entityClass.getSimpleName(),
-                    field.getName(),
-                    sizeAnn.max(),
-                    encryptedOutput.length(),
-                    columnAnn.length()
-            );
         }
     }
 }

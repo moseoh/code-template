@@ -1,4 +1,4 @@
-package com.moseoh.searchencrypteddata;
+package com.moseoh.searchencrypteddata.entity;
 
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
