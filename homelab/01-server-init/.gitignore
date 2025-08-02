@@ -185,6 +185,7 @@ cython_debug/
 # Ansible
 *.retry
 .vault_pass
+artifacts/
 
 # 보안 관련 파일
 vars/main.yml
