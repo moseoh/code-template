@@ -133,6 +133,59 @@ def deploy_k8s_infra():
         sys.exit(1)
 
 
+def deploy_ingress():
+    """SigNoz Traefik Ingress 설정 배포"""
+    print("\n🌐 SigNoz Traefik Ingress 설정 중...")
+    
+    # Ingress 리소스 생성
+    ingress_yaml = f"""apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: signoz-ingress
+  namespace: {NAMESPACE}
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web
+spec:
+  rules:
+  - host: monitoring.moseoh.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: signoz
+            port:
+              number: 8080
+"""
+    
+    try:
+        # 임시 파일들 생성
+        ingress_file = Path(__file__).parent / "signoz-ingress.yaml"
+        
+        with open(ingress_file, "w", encoding="utf-8") as f:
+            f.write(ingress_yaml)
+        
+        print("📄 Traefik Middleware 설정 파일 생성됨")
+        print("📄 Ingress 설정 파일 생성됨")
+        
+        # Ingress 적용
+        print("⚙️  Ingress 설정 적용 중...")
+        run_command(["kubectl", "apply", "-f", str(ingress_file)])
+        
+        # 임시 파일들 삭제
+        ingress_file.unlink()
+        
+        print("✅ Traefik Ingress 설정 완료!")
+        
+    except subprocess.CalledProcessError as e:
+        print(f"❌ Ingress 설정 실패: {e}")
+        sys.exit(1)
+    except Exception as e:
+        print(f"❌ Ingress 파일 처리 중 오류: {e}")
+        sys.exit(1)
+
+
 def verify_deployment():
     """배포 상태 확인"""
     print("\n🔍 배포 상태 확인 중...")
@@ -147,6 +200,14 @@ def verify_deployment():
         print(f"\n🌐 {NAMESPACE} 네임스페이스의 서비스 상태:")
         run_command(["kubectl", "get", "svc", "-n", NAMESPACE])
         
+        # Middleware 상태 확인
+        print(f"\n🛡️  {NAMESPACE} 네임스페이스의 Traefik Middleware 상태:")
+        run_command(["kubectl", "get", "middleware", "-n", NAMESPACE])
+        
+        # Ingress 상태 확인
+        print(f"\n🔗 {NAMESPACE} 네임스페이스의 Ingress 상태:")
+        run_command(["kubectl", "get", "ingress", "-n", NAMESPACE])
+        
         # DaemonSet 상태 확인 (K8s 인프라)
         print(f"\n🔧 {NAMESPACE} 네임스페이스의 DaemonSet 상태:")
         run_command(["kubectl", "get", "daemonset", "-n", NAMESPACE])
@@ -159,9 +220,12 @@ def verify_deployment():
         
         # 접속 정보 안내
         print("\n📋 SigNoz 접속 정보:")
-        print("1. 포트 포워딩을 통한 접속:")
+        print("1. Traefik Ingress를 통한 접속:")
+        print("   http://monitoring.moseoh.com")
+        print("   (IP 화이트리스트: 192.168.0.100)")
+        print("2. 포트 포워딩을 통한 접속:")
         print(f"   kubectl port-forward -n {NAMESPACE} svc/signoz 28080:8080")
-        print("2. 브라우저에서 http://localhost:28080 접속")
+        print("   http://localhost:28080")
         print("3. 기본 로그인 정보:")
         print("   - Email: admin@signoz.io")
         print("   - Password: admin")
@@ -179,10 +243,12 @@ def main():
         check_prerequisites()
         deploy_signoz()
         deploy_k8s_infra()
+        deploy_ingress()
         verify_deployment()
         
         print("\n🎉 SigNoz 전체 스택 배포가 성공적으로 완료되었습니다!")
         print("💡 몇 분 후 SigNoz에서 호스트 및 K8s 메트릭을 확인할 수 있습니다.")
+        print("🌐 http://monitoring.moseoh.com 에서 SigNoz에 접속할 수 있습니다!")
         
     except KeyboardInterrupt:
         print("\n❌ 사용자에 의해 배포가 중단되었습니다")
