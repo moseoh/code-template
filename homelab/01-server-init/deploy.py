@@ -25,7 +25,7 @@ def check_prerequisites():
     print("✅ vars/main.yml 파일 존재")
     
     # 플레이북 파일들 확인
-    playbooks = ["ubuntu-setup.yml", "wakeonlan-setup.yml", "k3s-install.yml"]
+    playbooks = ["ubuntu-setup.yml", "wakeonlan-setup.yml", "k3s-install.yml", "slack-alert.yml"]
     playbook_dir = Path(__file__).parent / "playbooks"
     
     for playbook in playbooks:
@@ -100,6 +100,7 @@ def main():
     print("- Ubuntu 24 초기설정 (APT 미러, SSH 보안, 타임존)")
     print("- WakeOnLAN 설정")
     print("- K3s 클러스터 설치")
+    print("- Slack 부팅 알림 설정 (webhook URL 설정시)")
     print("")
     
     # 사용자 확인
@@ -128,12 +129,16 @@ def main():
         if not run_playbook("k3s-install.yml", vars_file, "K3s 설치"):
             sys.exit(1)
         
+        # Slack 알림 설정 (실패해도 계속 진행)
+        run_playbook("slack-alert.yml", vars_file, "Slack 부팅 알림 설정")
+        
         print("\n🎉 홈랩 전체 설치가 성공적으로 완료되었습니다!")
         print("\n📋 다음 단계:")
         print("1. ~/.kube/homelab-config 파일이 생성되었습니다.")
         print("2. kubectl을 사용하여 클러스터에 접근할 수 있습니다:")
         print("   export KUBECONFIG=~/.kube/homelab-config")
         print("   kubectl get nodes")
+        print("3. 다음 부팅시부터 Slack 알림이 전송됩니다. (설정된 경우)")
         
     except KeyboardInterrupt:
         print("\n❌ 사용자에 의해 설치가 중단되었습니다")

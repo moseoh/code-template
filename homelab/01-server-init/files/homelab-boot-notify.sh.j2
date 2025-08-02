@@ -1,0 +1,60 @@
+#!/bin/bash
+# 홈랩 서버 부팅 완료 Slack 알림 스크립트
+
+WEBHOOK_URL="{{ slack_webhook_url }}"
+
+# 현재 시간을 원하는 포맷으로 저장
+# 예: 2025년 08월 02일 15시 15분 08초
+CURRENT_TIME=$(date "+%Y년 %m월 %d일 %H시 %M분 %S초")
+
+# JSON 페이로드 생성
+# $CURRENT_TIME 변수를 JSON 내부의 문자열로 삽입
+JSON_PAYLOAD=$(cat <<EOF
+{
+    "attachments": [
+        {
+            "color": "#2EB67D",
+            "blocks": [
+                {
+                    "type": "header",
+                    "text": {
+                        "type": "plain_text",
+                        "text": "🏠 홈랩 서버 부팅 완료",
+                        "emoji": true
+                    }
+                },
+                {
+                    "type": "section",
+                    "text": {
+                        "type": "mrkdwn",
+                        "text": "서버가 성공적으로 시작되어 이제 사용 가능한 상태입니다. 🚀"
+                    }
+                },
+                {
+                    "type": "divider"
+                },
+                {
+                    "type": "context",
+                    "elements": [
+                        {
+                            "type": "mrkdwn",
+                            "text": "부팅 완료 시간: $CURRENT_TIME"
+                        }
+                    ]
+                }
+            ]
+        }
+    ]
+}
+EOF
+)
+
+# curl을 사용하여 슬랙으로 POST 요청 전송
+curl -X POST -H 'Content-type: application/json' --data "$JSON_PAYLOAD" $WEBHOOK_URL
+
+if [ $? -eq 0 ]; then
+    echo "✅ Slack 알림이 성공적으로 전송되었습니다!"
+else
+    echo "❌ Slack 알림 전송에 실패했습니다."
+    exit 1
+fi
