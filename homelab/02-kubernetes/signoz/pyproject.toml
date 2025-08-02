@@ -1,0 +1,6 @@
+[project]
+name = "signoz"
+version = "0.1.0"
+description = "SigNoz monitoring stack deployment for homelab K3s cluster"
+requires-python = ">=3.12"
+dependencies = []
