@@ -1,0 +1,10 @@
+# 민감한 정보 - Ansible Vault로 암호화
+---
+# 인증 정보
+ansible_become_password: ""
+
+# 로컬 공개키 경로
+local_public_key_path: ""
+
+# Slack 알림 설정
+slack_webhook_url: ""

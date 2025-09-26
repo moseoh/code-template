@@ -42,7 +42,7 @@
       ansible.builtin.replace:
         path: ~/.kube/config
         regexp: 'https://127\.0\.0\.1:6443'
-        replace: "https://{{ target_ip }}:6443"
+        replace: "https://{{ ansible_host }}:6443"
       delegate_to: localhost
       become: no
 
@@ -67,7 +67,7 @@
           - kubectl cluster-info
 
           서버에서 사용법:
-          - SSH 접속: ssh {{ target_username }}@{{ target_ip }}
+          - SSH 접속: ssh {{ ansible_user }}@{{ ansible_host }}
           - k3s kubectl get nodes
 
           kubeconfig 위치: ~/.kube/config

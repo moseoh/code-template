@@ -188,10 +188,8 @@ cython_debug/
 artifacts/
 
 # 보안 관련 파일
-vars/main.yml
-vars/*credentials*
-vars/*secret*
-vars/*private*
+**/vault.yml
+**/vault.yaml
 
 # 백업 파일
 *.backup
