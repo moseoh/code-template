@@ -42,9 +42,9 @@
         - name: 공개키 복사
           ansible.builtin.copy:
             src: "{{ local_public_key_path }}"
-            dest: "/home/{{ target_username }}/.ssh/authorized_keys"
-            owner: "{{ target_username }}"
-            group: "{{ target_username }}"
+            dest: "/home/{{ ansible_user }}/.ssh/authorized_keys"
+            owner: "{{ ansible_user }}"
+            group: "{{ ansible_user }}"
             mode: "0600"
 
         - name: SSH 보안 설정 파일 생성

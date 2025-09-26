@@ -17,14 +17,14 @@
 
     - name: target_ip에 해당하는 네트워크 인터페이스 찾기
       ansible.builtin.shell: |
-        ifconfig | grep -B 1 "{{ target_ip }}" | head -1 | awk '{print $1}' | sed 's/:$//'
+        ifconfig | grep -B 1 "{{ ansible_host }}" | head -1 | awk '{print $1}' | sed 's/:$//'
       register: target_interface_result
       changed_when: false
       failed_when: target_interface_result.stdout == ""
 
     - name: 찾은 네트워크 인터페이스 확인
       ansible.builtin.debug:
-        msg: "Target IP {{ target_ip }}가 설정된 인터페이스: {{ target_interface_result.stdout }}"
+        msg: "Target IP {{ ansible_host }}가 설정된 인터페이스: {{ target_interface_result.stdout }}"
 
     - name: 인터페이스 변수 설정
       ansible.builtin.set_fact:
