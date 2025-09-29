@@ -7,6 +7,7 @@ nfs:
 
 storageClass:
   name: nfs-client        # StorageClass 이름
+  defaultClass: true
   archiveOnDelete: true   # PVC 삭제 시 archived-{name}으로 보관
   onDelete: delete        # PVC 삭제시 PV 삭제
   pathPattern: "${.PVC.namespace}/${.PVC.name}-${.PVC.uid}" # UID를 포함하여 완전한 고유성 보장

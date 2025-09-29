@@ -12,7 +12,7 @@ install:
     helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
     helm repo update
     helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
-        -f nfs-provisioner/values.yml \
+        -f values.yml \
         --create-namespace \
         --namespace nfs-provisioner
 
@@ -20,7 +20,7 @@ install:
 update:
     helm repo update
     helm upgrade nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
-        -f nfs-provisioner/values.yml \
+        -f values.yml \
         --namespace nfs-provisioner
 
 # NFS subdir external provisioner 삭제
@@ -57,10 +57,10 @@ cleanup-test:
 # values.yml 파일 검증
 validate:
     @echo "Validating values.yml..."
-    @helm lint . -f nfs-provisioner/values.yml 2>/dev/null || true
+    @helm lint . -f values.yml 2>/dev/null || true
     @echo "\nShowing values that will be used:"
     helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
-        -f nfs-provisioner/values.yml \
+        -f values.yml \
         --dry-run \
         --debug \
         --namespace nfs-provisioner 2>/dev/null | grep -A 20 "USER-SUPPLIED VALUES:" || true
