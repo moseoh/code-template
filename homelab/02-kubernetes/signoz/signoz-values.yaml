@@ -1,5 +1,5 @@
 global:
-  storageClass: local-path
-
-clickhouse:
-  installCustomStorageClass: true
+  cloud: others
+  clusterName: homelab-k3s
+  deploymentEnvironment: homelab
+  storageClass: nfs-client

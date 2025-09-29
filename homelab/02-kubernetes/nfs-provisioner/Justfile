@@ -1,0 +1,81 @@
+#!/usr/bin/env just --justfile
+
+# 기본 변수 설정
+test_nfs_namespace := 'test-nfs-namespace'
+
+# 도움말 표시
+_default:
+    @just --list
+
+# NFS subdir external provisioner 설치
+install:
+    helm repo add nfs-subdir-external-provisioner https://kubernetes-sigs.github.io/nfs-subdir-external-provisioner/
+    helm repo update
+    helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
+        -f nfs-provisioner/values.yml \
+        --create-namespace \
+        --namespace nfs-provisioner
+
+# NFS subdir external provisioner 업데이트
+update:
+    helm repo update
+    helm upgrade nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
+        -f nfs-provisioner/values.yml \
+        --namespace nfs-provisioner
+
+# NFS subdir external provisioner 삭제
+uninstall:
+    helm uninstall nfs-subdir-external-provisioner --namespace nfs-provisioner
+    kubectl delete namespace nfs-provisioner --ignore-not-found=true
+
+# NFS provisioner 상태 확인
+status:
+    @echo "=== Helm Release Status ==="
+    helm status nfs-subdir-external-provisioner --namespace nfs-provisioner || true
+    @echo "\n=== Pods ==="
+    kubectl get pods -n nfs-provisioner
+    @echo "\n=== StorageClass ==="
+    kubectl get storageclass | grep nfs || true
+
+# NFS provisioner 로그 확인
+logs:
+    kubectl logs -n nfs-provisioner -l app=nfs-subdir-external-provisioner --tail=50 -f
+
+# 테스트 PVC 생성
+test:
+    @echo "Creating test namespace..."
+    kubectl create namespace {{test_nfs_namespace}} --dry-run=client -o yaml | kubectl apply -f -
+    @echo "Creating test PVC..."
+    kubectl delete pvc test-claim -n {{test_nfs_namespace}} 2>/dev/null || true
+    kubectl create -f https://raw.githubusercontent.com/kubernetes-sigs/nfs-subdir-external-provisioner/master/deploy/test-claim.yaml -n {{test_nfs_namespace}}
+    kubectl get pvc test-claim -n {{test_nfs_namespace}}
+
+# 테스트 PVC 삭제
+cleanup-test:
+    kubectl delete pvc test-claim --ignore-not-found=true -n {{test_nfs_namespace}}
+
+# values.yml 파일 검증
+validate:
+    @echo "Validating values.yml..."
+    @helm lint . -f nfs-provisioner/values.yml 2>/dev/null || true
+    @echo "\nShowing values that will be used:"
+    helm install nfs-subdir-external-provisioner nfs-subdir-external-provisioner/nfs-subdir-external-provisioner \
+        -f nfs-provisioner/values.yml \
+        --dry-run \
+        --debug \
+        --namespace nfs-provisioner 2>/dev/null | grep -A 20 "USER-SUPPLIED VALUES:" || true
+
+# 현재 설치된 values 확인
+get-values:
+    helm get values nfs-subdir-external-provisioner --namespace nfs-provisioner
+
+# 재설치 (삭제 후 설치)
+reinstall: uninstall install
+    @echo "NFS provisioner reinstalled successfully"
+
+# Helm 차트 버전 확인
+check-version:
+    @echo "=== Current installed version ==="
+    helm list -n nfs-provisioner | grep nfs-subdir || echo "Not installed"
+    @echo "\n=== Available versions ==="
+    helm search repo nfs-subdir-external-provisioner/nfs-subdir-external-provisioner --versions | head -10

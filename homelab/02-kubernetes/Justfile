@@ -1,0 +1,11 @@
+#!/usr/bin/env just --justfile
+
+# 기본 변수 설정
+_default:
+    @just --list
+
+# NFS 배포
+mod nfs 'nfs-provisioner'
+
+# SigNoz 모니터링
+mod signoz 'signoz'

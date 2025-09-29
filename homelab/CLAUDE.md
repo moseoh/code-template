@@ -13,9 +13,6 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ```
 01-server-init/     # Ansible 기반 서버 초기 설정 및 K3s 설치
 02-kubernetes/      # Kubernetes 리소스 정의 (향후 확장)
-03-applications/    # 애플리케이션 배포 (향후 확장)
-04-monitoring/      # 모니터링 스택 (향후 확장)
-05-security/        # 보안 설정 (향후 확장)
 ```
 
 ## Development Commands
@@ -23,99 +20,118 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ### 환경 설정
 ```bash
 # Python 가상환경 생성 및 활성화 (uv 사용)
+cd 01-server-init
 uv venv
 source .venv/bin/activate
 
 # 의존성 설치
 uv pip install -r pyproject.toml
 
-# 설정 파일 준비
-cd 01-server-init
-cp vars/main.yml.example vars/main.yml
-# main.yml 파일을 실제 환경에 맞게 수정
+# Vault 패스워드 설정
+echo "your_vault_password" > .vault_pass
+chmod 600 .vault_pass
 ```
 
-### 홈랩 배포
+### Just 명령어 (권장)
 ```bash
-# 전체 홈랩 환경 자동 설치 (권장)
 cd 01-server-init
-./run.sh
-
-# 개별 플레이북 실행
-ansible-playbook playbooks/ubuntu-setup.yml -e @vars/main.yml
-ansible-playbook playbooks/wakeonlan-setup.yml -e @vars/main.yml
-ansible-playbook playbooks/k3s-install.yml -e @vars/main.yml
 
 # 연결 테스트
-ansible homelab -m ping -e @vars/main.yml
-```
+just ping
 
-### Ansible Commands
-```bash
-# 모든 작업은 01-server-init 디렉토리에서 실행
-cd 01-server-init
+# 실행 명령어 (run- prefix)
+just run-ubuntu-setup    # Ubuntu 서버 초기 설정
+just run-wakeonlan       # WakeOnLAN 설정
+just run-nfs-server      # NFS 서버 설정
+just run-k3s             # K3s 클러스터 설치
+just run-all             # 전체 설치 (순차 실행)
 
-# 인벤토리 확인
-ansible-inventory --list
+# 확인 명령어 (check- prefix)
+just check-ubuntu-setup  # Ubuntu 설정 변경사항 확인
+just check-all           # 모든 플레이북 확인
 
-# 특정 호스트 정보
-ansible homelab -m setup -e @vars/main.yml
+# Vault 관리
+just vault-edit          # Vault 파일 안전 편집
+just vault-view          # Vault 파일 내용 확인
+just vault-create-pass   # Vault 패스워드 파일 생성
 
-# 플레이북 문법 검사
-ansible-playbook --syntax-check playbooks/<playbook-name>.yml
+# 상태 확인
+just inventory-list      # 인벤토리 목록
 ```
 
 ## Architecture
 
 ### Core Components
 
-1. **Ansible 기반 자동화**: Ubuntu 서버 초기 설정, WakeOnLAN 설정, K3s 클러스터 설치를 통합 관리
-2. **단계별 구조**: 각 단계(01-05)는 독립적으로 관리되며 향후 확장 가능
-3. **변수 기반 설정**: `vars/main.yml`에서 타겟 서버 정보와 설정을 중앙 관리
+1. **Ansible 표준 구조**: `inventory/group_vars/all/vault.yml`을 통한 Vault 기반 변수 관리
+2. **Just 기반 실행**: Justfile을 통한 명령어 표준화 및 그룹화
+3. **uv 통합**: 모든 Python/Ansible 명령어는 `uv run` 접두사 사용
+4. **보안 중심**: 민감한 정보는 Ansible Vault로 암호화
 
 ### Key Files
 
-- `01-server-init/run.sh`: 전체 홈랩 설치를 실행하는 메인 스크립트
-- `01-server-init/vars/main.yml`: 타겟 서버 정보 및 설정 변수 (main.yml.example을 복사하여 생성)
-- `01-server-init/playbooks/`: Ubuntu 초기설정, WakeOnLAN, K3s 설치 플레이북
-- `01-server-init/inventory/hosts.yml`: Ansible 인벤토리 설정
+- `01-server-init/Justfile`: 모든 실행 명령어 정의 (그룹별 정리)
+- `01-server-init/inventory/group_vars/all/vault.yml`: 암호화된 민감 변수
+- `01-server-init/inventory/hosts.yml`: 호스트 정의 (IP, 사용자명만)
+- `01-server-init/.vault_pass`: Vault 패스워드 파일 (gitignore 대상)
+- `01-server-init/ansible.cfg`: Ansible 기본 설정
 
-### Installation Flow
+### Playbook Architecture
 
-1. **Ubuntu 초기설정** (`ubuntu-setup.yml`):
-   - APT 미러를 카카오로 변경
-   - SSH 보안 설정 (공개키 인증, 패스워드 로그인 비활성화)
-   - 타임존 설정
-   - 필수 패키지 설치
+각 플레이북은 독립적인 변수를 가지며 특정 기능을 담당합니다:
 
-2. **WakeOnLAN 설정** (`wakeonlan-setup.yml`):
-   - 네트워크 카드 WOL 설정
-   - 시스템 서비스 등록
+1. **ubuntu-setup.yml**: Ubuntu 초기 설정 (APT, SSH, 타임존, LVM, Swap)
+2. **wakeonlan-setup.yml**: WakeOnLAN 네트워크 설정
+3. **nfs-server-setup.yml**: NFS 서버 설정 (K8s 스토리지용)
+4. **k3s-setup.yml**: K3s Kubernetes 클러스터 설치
+5. **slack-alert.yml**: Slack 알림 전송
 
-3. **K3s 설치** (`k3s-install.yml`):
-   - K3s 단일 서버 설치
-   - kubeconfig 로컬 복사
-   - 클러스터 상태 확인
+### Variable Management
+
+- **호스트 변수**: `inventory/hosts.yml`에 IP와 사용자명만 정의
+- **민감 변수**: `inventory/group_vars/all/vault.yml`에 암호화 저장
+- **플레이북 변수**: 각 플레이북 내부에 독립적으로 정의
 
 ## Configuration
 
-### Required Variables (vars/main.yml)
+### Vault Setup (필수)
+```bash
+# 1. Vault 패스워드 파일 생성
+just vault-create-pass
+
+# 2. Vault 파일 편집 (최초 1회)
+just vault-edit
+```
+
+### Required Vault Variables
 ```yaml
-target_ip: "192.168.0.101"           # 타겟 서버 IP
-target_username: "ubuntu"            # 타겟 서버 사용자명
-target_password: "your_password"     # 타겟 서버 패스워드
-local_public_key_path: "~/.ssh/id_rsa.pub"  # 로컬 공개키 경로
+# 타겟 서버 정보
+target_ip: "192.168.0.101"
+target_username: "moseoh"
+target_password: "your_password"
+
+# 인증 정보
+ansible_password: "your_password"
+ansible_become_password: "your_password"
+
+# 로컬 공개키 경로
+local_public_key_path: "~/.ssh/id_rsa.pub"
+
+# Slack 알림 설정 (선택사항)
+slack_webhook_url: "https://hooks.slack.com/services/..."
 ```
 
 ### Prerequisites
 - Python 3.12+
 - uv (Python 패키지 관리자)
+- just (명령어 실행기)
 - SSH 공개키 생성 (`ssh-keygen -t rsa`)
 - 타겟 서버에 SSH 접근 권한
 
 ## Development Guidelines
 
-- 모든 Ansible 작업은 `01-server-init` 디렉토리에서 실행
-- 새로운 플레이북 추가 시 `run.sh`에 통합 고려
-- 변수는 `vars/main.yml`에서 중앙 관리
-- 민감한 정보는 절대 커밋하지 않음 (vars/main.yml은 .gitignore 대상)
+- 모든 작업은 `01-server-init` 디렉토리에서 실행
+- `just` 명령어 사용 권장 (표준화된 실행 환경)
+- 새로운 플레이북 추가 시 Justfile에 `run-*`와 `check-*` 명령어 추가
+- 민감한 정보는 반드시 Vault로 암호화 (`just vault-edit`)
+- 플레이북별 독립적인 변수 관리 (플레이북 내부 vars 섹션 활용)
