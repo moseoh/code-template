@@ -2,6 +2,7 @@ global:
   cloud: others
   clusterName: homelab-k3s
   deploymentEnvironment: homelab
+  storageClass: nfs-client
 
 # SigNoz OTel Collector 엔드포인트 
 # 같은 네임스페이스이므로 서비스명으로 접근

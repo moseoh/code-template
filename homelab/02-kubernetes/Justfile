@@ -6,3 +6,6 @@ _default:
 
 # NFS 배포
 mod nfs 'nfs-provisioner'
+
+# SigNoz 모니터링
+mod signoz 'signoz'
