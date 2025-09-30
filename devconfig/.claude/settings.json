@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": ["Bash(file:*)", "mcp__Context7:*"],
+    "deny": [],
+    "ask": []
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "python3 ~/.claude/statusline.py"
+  },
+  "alwaysThinkingEnabled": false
+}
