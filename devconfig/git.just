@@ -174,48 +174,16 @@ update-ruleset:
 [group('git')]
 cmb: clean-merged-branches
 
-# 머지된 브랜치 정리 (main, master, develop, staging, release 제외)
+# 브랜치 정리 (main, master, develop, staging, release 제외)
 [group('git')]
 clean-merged-branches:
     #!/usr/bin/env bash
     set -euo pipefail
 
-    echo "🧹 머지된 브랜치 정리 중..."
+    echo "🧹 브랜치 정리 중..."
     echo "=================================================="
 
-    # 현재 브랜치 확인
-    CURRENT_BRANCH=$(git branch --show-current)
-    echo "📍 현재 브랜치: $CURRENT_BRANCH"
-
-    # 보호할 브랜치 목록
-    PROTECTED_BRANCHES="main|master|develop|staging|release"
-
-    # 원격 브랜치 업데이트
-    echo ""
-    echo "🔄 원격 브랜치 정보 업데이트 중..."
-    git fetch --prune
-
-    # 머지된 로컬 브랜치 찾기 (보호 브랜치 제외)
-    echo ""
-    echo "🔍 머지된 로컬 브랜치 확인 중..."
-    MERGED_BRANCHES=$(git branch --merged | grep -vE "^\*|$PROTECTED_BRANCHES" | sed 's/^[[:space:]]*//' || true)
-
-    if [ -z "$MERGED_BRANCHES" ]; then
-        echo "✅ 삭제할 머지된 브랜치가 없습니다."
-    else
-        echo ""
-        echo "📋 삭제 대상 브랜치:"
-        echo "$MERGED_BRANCHES"
-        echo ""
-        read -p "위 브랜치들을 삭제하시겠습니까? (y/N): " -n 1 -r
-        echo
-        if [[ $REPLY =~ ^[Yy]$ ]]; then
-            echo "$MERGED_BRANCHES" | xargs -I {} git branch -d {}
-            echo "✅ 로컬 브랜치 삭제 완료!"
-        else
-            echo "❌ 삭제가 취소되었습니다."
-        fi
-    fi
+    git branch | grep -Ev "(^\*|$PROTECTED_BRANCHES)" | xargs --no-run-if-empty git branch -D
 
     echo ""
     echo "=================================================="
