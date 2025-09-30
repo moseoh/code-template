@@ -21,10 +21,6 @@ Body Structure (include relevant sections only):
 - Specific implementation details
 - Modified components/files
 
-**Test Plan** (optional)
-
-- Testing approach and verification steps
-
 **Breaking Changes** (if applicable)
 
 - List breaking changes and migration notes

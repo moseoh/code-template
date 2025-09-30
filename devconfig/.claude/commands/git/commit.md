@@ -13,6 +13,7 @@ Required Types:
 
 Rules:
 
+- CRITICAL: Check current branch before committing. If on main or master, create and switch to a new feature branch first
 - Use imperative mood, lowercase start, no ending period
 - Keep under 50 characters
 - Write descriptions in Korean by default
