@@ -172,16 +172,20 @@ update-ruleset:
 
 # Alias clean-merged-branches
 [group('git')]
-cmb: clean-merged-branches
+cleanb: clean-branches
 
 # 브랜치 정리 (main, master, develop, staging, release 제외)
 [group('git')]
-clean-merged-branches:
+clean-branches:
     #!/usr/bin/env bash
     set -euo pipefail
 
+    # 보호할 브랜치 목록
+    PROTECTED_BRANCHES="main|master|develop|staging|release"
+
     echo "🧹 브랜치 정리 중..."
     echo "=================================================="
+    echo ""
 
     git branch | grep -Ev "(^\*|$PROTECTED_BRANCHES)" | xargs --no-run-if-empty git branch -D
 
