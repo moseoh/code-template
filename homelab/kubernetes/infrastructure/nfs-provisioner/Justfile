@@ -53,6 +53,7 @@ test:
 # 테스트 PVC 삭제
 cleanup-test:
     kubectl delete pvc test-claim --ignore-not-found=true -n {{test_nfs_namespace}}
+    kubectl delete ns {{test_nfs_namespace}}
 
 # values.yml 파일 검증
 validate:

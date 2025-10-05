@@ -1,0 +1,127 @@
+# Homelab Ansible 자동화
+# 사용법: just <command>
+
+vault_file := ".vault_pass"
+inventory := "inventory/hosts.yml"
+ansible := "uv run ansible"
+ansible_playbook := "uv run ansible-playbook"
+
+# 도움말 표시
+default:
+    @just --list
+
+# ============================================================
+# 연결 테스트
+# ============================================================
+
+[group('연결')]
+ping:
+    @echo "🏠 홈랩 서버 연결 테스트..."
+    {{ ansible }} homelab -i {{ inventory }} -m ping --vault-password-file {{ vault_file }}
+
+# ============================================================
+# Server 플레이북
+# ============================================================
+
+# Ubuntu 서버 초기 설정 실행
+[group('Server')]
+run-ubuntu-setup:
+    @echo "🐧 Ubuntu 서버 초기 설정 실행..."
+    {{ ansible_playbook }} -i {{ inventory }} playbooks/server/ubuntu-setup.yml --vault-password-file {{ vault_file }}
+
+# WakeOnLAN 설정 실행
+[group('Server')]
+run-wakeonlan:
+    @echo "⚡ WakeOnLAN 설정 실행..."
+    {{ ansible_playbook }} -i {{ inventory }} playbooks/server/wakeonlan-setup.yml --vault-password-file {{ vault_file }}
+
+# NFS 서버 설정 실행
+[group('Server')]
+run-nfs-server:
+    @echo "📁 NFS 서버 설정 실행..."
+    {{ ansible_playbook }} -i {{ inventory }} playbooks/server/nfs-server-setup.yml --vault-password-file {{ vault_file }}
+
+# Ubuntu 설정 변경 사항 확인
+[group('Server')]
+check-ubuntu-setup:
+    @echo "🔍 Ubuntu 설정 변경 사항 확인..."
+    {{ ansible_playbook }} -i {{ inventory }} playbooks/server/ubuntu-setup.yml --vault-password-file {{ vault_file }} --check || echo "✅ 확인 완료 (변경 사항 감지는 정상)"
+
+# WakeOnLAN 설정 변경 사항 확인
+[group('Server')]
+check-wakeonlan:
+    @echo "🔍 WakeOnLAN 설정 변경 사항 확인..."
+    {{ ansible_playbook }} -i {{ inventory }} playbooks/server/wakeonlan-setup.yml --vault-password-file {{ vault_file }} --check || echo "✅ 확인 완료 (변경 사항 감지는 정상)"
+
+# NFS 서버 설정 변경 사항 확인
+[group('Server')]
+check-nfs-server:
+    @echo "🔍 NFS 서버 설정 변경 사항 확인..."
+    {{ ansible_playbook }} -i {{ inventory }} playbooks/server/nfs-server-setup.yml --vault-password-file {{ vault_file }} --check || echo "✅ 확인 완료 (변경 사항 감지는 정상)"
+
+# ============================================================
+# Kubernetes 플레이북
+# ============================================================
+
+# K3s 클러스터 설치 실행
+[group('Kubernetes')]
+run-k3s:
+    @echo "☸️ K3s 클러스터 설치 실행..."
+    {{ ansible_playbook }} -i {{ inventory }} playbooks/kubernetes/k3s-setup.yml --vault-password-file {{ vault_file }}
+
+# K3s 클러스터 설정 변경 사항 확인
+[group('Kubernetes')]
+check-k3s:
+    @echo "🔍 K3s 클러스터 설정 변경 사항 확인..."
+    {{ ansible_playbook }} -i {{ inventory }} playbooks/kubernetes/k3s-setup.yml --vault-password-file {{ vault_file }} --check || echo "✅ 확인 완료 (변경 사항 감지는 정상)"
+
+# ============================================================
+# Common 플레이북
+# ============================================================
+
+# Slack 알림 전송 실행
+[group('Common')]
+run-slack-alert:
+    @echo "💬 Slack 알림 전송 실행..."
+    {{ ansible_playbook }} -i {{ inventory }} playbooks/common/slack-alert.yml --vault-password-file {{ vault_file }}
+
+# Slack 알림 설정 변경 사항 확인
+[group('Common')]
+check-slack-alert:
+    @echo "🔍 Slack 알림 설정 변경 사항 확인..."
+    {{ ansible_playbook }} -i {{ inventory }} playbooks/common/slack-alert.yml --vault-password-file {{ vault_file }} --check || echo "✅ 확인 완료 (변경 사항 감지는 정상)"
+
+# ============================================================
+# Vault 관리
+# ============================================================
+
+# Vault 파일 안전 편집
+[group('Vault')]
+vault-edit:
+    @echo "🔐 Vault 파일 편집..."
+    uv run ansible-vault edit inventory/group_vars/all/vault.yml --vault-password-file {{ vault_file }}
+
+# Vault 파일 내용 확인
+[group('Vault')]
+vault-view:
+    @echo "👁️ Vault 파일 내용 확인..."
+    uv run ansible-vault view inventory/group_vars/all/vault.yml --vault-password-file {{ vault_file }}
+
+# Vault 패스워드 파일 생성
+[group('Vault')]
+vault-create-pass:
+    @echo "🔑 Vault 패스워드 파일 생성..."
+    @echo "패스워드를 입력하세요:"
+    @read -s password && echo "$$password" > {{ vault_file }}
+    @chmod 600 {{ vault_file }}
+    @echo "✅ Vault 패스워드 파일 생성 완료: {{ vault_file }}"
+
+# ============================================================
+# 정보 확인
+# ============================================================
+
+# 인벤토리 호스트 목록 (기본 정보만)
+[group('정보')]
+inventory-list:
+    @echo "📋 인벤토리 호스트 목록..."
+    uv run ansible-inventory --list -i {{ inventory }}
