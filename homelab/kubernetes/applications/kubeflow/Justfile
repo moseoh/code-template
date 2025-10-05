@@ -81,3 +81,122 @@ install:
 
     echo "Installation complete! 🎉"
     echo "Access dashboard: kubectl port-forward -n istio-system svc/istio-ingressgateway 8080:80"
+
+[working-directory: 'manifests-1.10.2']
+uninstall:
+    @echo "🗑️  Kubeflow 삭제 시작..."
+    @echo ""
+
+    # User namespace (역순)
+    @echo "Deleting user namespace..."
+    -kustomize build common/user-namespace/base | kubectl delete -f - --force --grace-period=0 --ignore-not-found=true
+
+    # Profiles
+    @echo "Deleting Profiles..."
+    -kustomize build applications/profiles/upstream/overlays/kubeflow | kubectl delete -f - --force --grace-period=0 --ignore-not-found=true
+
+    # Volume management
+    @echo "Deleting Volume management..."
+    -kustomize build applications/volumes-web-app/upstream/overlays/istio | kubectl delete -f - --force --grace-period=0 --ignore-not-found=true
+    -kustomize build applications/pvcviewer-controller/upstream/base | kubectl delete -f - --force --grace-period=0 --ignore-not-found=true
+
+    # Jupyter Notebook
+    @echo "Deleting Jupyter Notebook..."
+    -kustomize build applications/jupyter/jupyter-web-app/upstream/overlays/istio | kubectl delete -f - --force --grace-period=0 --ignore-not-found=true
+    -kustomize build applications/jupyter/notebook-controller/upstream/overlays/kubeflow | kubectl delete -f - --force --grace-period=0 --ignore-not-found=true
+
+    # Dashboard
+    @echo "Deleting Dashboard..."
+    -kustomize build applications/admission-webhook/upstream/overlays/cert-manager | kubectl delete -f - --force --grace-period=0 --ignore-not-found=true
+    -kustomize build applications/centraldashboard/overlays/oauth2-proxy | kubectl delete -f - --force --grace-period=0 --ignore-not-found=true
+
+    # KServe
+    @echo "Deleting KServe..."
+    -kustomize build applications/kserve/models-web-app/overlays/kubeflow | kubectl delete -f - --force --grace-period=0 --ignore-not-found=true
+    -kustomize build applications/kserve/kserve | kubectl delete -f - --force --grace-period=0 --ignore-not-found=true
+
+    # Kubeflow Pipelines
+    @echo "Deleting Kubeflow Pipelines..."
+    -kustomize build applications/pipeline/upstream/env/cert-manager/platform-agnostic-multi-user | kubectl delete -f - --force --grace-period=0 --ignore-not-found=true
+
+    # Network Policies, Kubeflow roles, Istio resources
+    @echo "Deleting Network policies, Kubeflow roles, Istio resources..."
+    -kustomize build common/istio/kubeflow-istio-resources/base | kubectl delete -f - --force --grace-period=0 --ignore-not-found=true
+    -kustomize build common/kubeflow-roles/base | kubectl delete -f - --force --grace-period=0 --ignore-not-found=true
+    -kustomize build common/networkpolicies/base | kubectl delete -f - --force --grace-period=0 --ignore-not-found=true
+
+    # Knative
+    @echo "Deleting Knative..."
+    -kubectl get namespace knative-serving -o json 2>/dev/null | jq '.spec.finalizers = []' | kubectl replace --raw "/api/v1/namespaces/knative-serving/finalize" -f - 2>/dev/null || true
+    -kustomize build common/istio/cluster-local-gateway/base | kubectl delete -f - --force --grace-period=0 --wait=false --ignore-not-found=true
+    -kustomize build common/knative/knative-serving/overlays/gateways | kubectl delete -f - --force --grace-period=0 --wait=false --ignore-not-found=true
+    -kubectl delete pods --all -n knative-serving --force --grace-period=0 2>/dev/null || true
+
+    # Istio
+    @echo "Deleting Istio..."
+    -kubectl get namespace istio-system -o json 2>/dev/null | jq '.spec.finalizers = []' | kubectl replace --raw "/api/v1/namespaces/istio-system/finalize" -f - 2>/dev/null || true
+    -kustomize build common/istio/istio-install/overlays/oauth2-proxy | kubectl delete -f - --force --grace-period=0 --wait=false --ignore-not-found=true
+    -kustomize build common/istio/istio-namespace/base | kubectl delete -f - --force --grace-period=0 --wait=false --ignore-not-found=true
+    -kustomize build common/istio/istio-crds/base | kubectl delete -f - --force --grace-period=0 --wait=false --ignore-not-found=true
+    -kubectl delete pods --all -n istio-system --force --grace-period=0 2>/dev/null || true
+
+    # cert-manager
+    @echo "Deleting cert-manager..."
+    -kubectl get namespace cert-manager -o json 2>/dev/null | jq '.spec.finalizers = []' | kubectl replace --raw "/api/v1/namespaces/cert-manager/finalize" -f - 2>/dev/null || true
+    -kustomize build common/cert-manager/kubeflow-issuer/base | kubectl delete -f - --force --grace-period=0 --wait=false --ignore-not-found=true
+    -kustomize build common/cert-manager/base | kubectl delete -f - --force --grace-period=0 --wait=false --ignore-not-found=true
+    -kubectl delete pods --all -n cert-manager --force --grace-period=0 2>/dev/null || true
+
+    # Namespace
+    @echo "Deleting namespace..."
+    -kubectl get namespace kubeflow -o json 2>/dev/null | jq '.spec.finalizers = []' | kubectl replace --raw "/api/v1/namespaces/kubeflow/finalize" -f - 2>/dev/null || true
+    -kustomize build common/kubeflow-namespace/base | kubectl delete -f - --force --grace-period=0 --wait=false --ignore-not-found=true
+    -kubectl delete pods --all -n kubeflow --force --grace-period=0 2>/dev/null || true
+
+    @echo ""
+    @echo "⏳ 리소스 정리 대기 (30초)..."
+    sleep 30
+
+    @echo ""
+    @echo "🧹 남은 리소스 확인 및 정리..."
+    -kubectl delete namespace kubeflow --force --grace-period=0 --ignore-not-found=true --timeout=60s
+    -kubectl delete namespace cert-manager --force --grace-period=0 --ignore-not-found=true --timeout=60s
+    -kubectl delete namespace istio-system --force --grace-period=0 --ignore-not-found=true --timeout=60s
+    -kubectl delete namespace knative-serving --force --grace-period=0 --ignore-not-found=true --timeout=60s
+
+    @echo ""
+    @echo "✅ Kubeflow 삭제 완료!"
+
+# Kubeflow 재설치 (삭제 후 설치)
+reinstall: uninstall
+    @echo "⏳ 리소스 완전 정리 대기 (60초)..."
+    sleep 60
+    just install
+
+# Kubeflow 상태 확인
+status:
+    @echo "=== Kubeflow Namespaces ==="
+    kubectl get namespaces | grep -E "(kubeflow|cert-manager|istio-system|knative-serving)" || echo "No Kubeflow namespaces found"
+    @echo ""
+    @echo "=== Kubeflow Pods ==="
+    kubectl get pods -n kubeflow 2>/dev/null || echo "No pods in kubeflow namespace"
+    @echo ""
+    @echo "=== Istio Pods ==="
+    kubectl get pods -n istio-system 2>/dev/null || echo "No pods in istio-system namespace"
+    @echo ""
+    @echo "=== Cert-Manager Pods ==="
+    kubectl get pods -n cert-manager 2>/dev/null || echo "No pods in cert-manager namespace"
+
+# Kubeflow 대시보드 포트 포워딩
+port-forward:
+    @echo "🌐 Kubeflow 대시보드 포트 포워딩 시작..."
+    @echo "접속 URL: http://localhost:8080"
+    kubectl port-forward -n istio-system svc/istio-ingressgateway 8080:80
+
+# Kubeflow 로그 확인 (특정 서비스)
+logs service:
+    kubectl logs -n kubeflow -l app={{service}} --tail=50 -f
+
+# 모든 Kubeflow 이벤트 확인
+events:
+    kubectl get events -n kubeflow --sort-by='.lastTimestamp'
