@@ -24,6 +24,9 @@ mod signoz 'applications/signoz'
 # Kubeflow 관리
 mod kubeflow 'applications/kubeflow'
 
+# n8n 워크플로우 자동화 관리
+mod n8n 'applications/n8n'
+
 # ============================================================
 # 전체 리소스 상태 확인
 # ============================================================
@@ -67,3 +70,9 @@ install-signoz:
 install-kubeflow:
     @echo "🤖 Kubeflow 설치..."
     cd applications/kubeflow && just install
+
+# n8n 설치
+[group('빠른접근')]
+install-n8n:
+    @echo "⚡ n8n 설치..."
+    cd applications/n8n && just install

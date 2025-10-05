@@ -1,0 +1,201 @@
+#!/usr/bin/env just --justfile
+# 기본 변수 설정
+
+namespace := 'n8n'
+manifests_dir := 'manifests'
+
+# 도움말 표시
+_default:
+    @just --list
+
+# ============================================================
+# 설치 및 제거
+# ============================================================
+
+# n8n 전체 설치 (PostgreSQL + n8n)
+install:
+    @echo "🚀 n8n 설치 시작..."
+    @echo ""
+    @echo "1️⃣  Namespace 생성..."
+    kubectl apply -f {{ manifests_dir }}/namespace.yaml
+    @echo ""
+    @echo "3️⃣  PostgreSQL ConfigMap 생성..."
+    kubectl apply -f {{ manifests_dir }}/postgres-configmap.yaml
+    @echo ""
+    @echo ""
+    @echo "3️⃣  PostgreSQL ConfigMap 생성..."
+    kubectl apply -f {{ manifests_dir }}/postgres-secret.yaml
+    @echo ""
+    @echo "4️⃣  PostgreSQL PVC 생성..."
+    kubectl apply -f {{ manifests_dir }}/postgres-pvc.yaml
+    @echo "⏳ PVC 생성 대기 (5초)..."
+    sleep 5
+    @echo ""
+    @echo "5️⃣  PostgreSQL Deployment 생성..."
+    kubectl apply -f {{ manifests_dir }}/postgres-deployment.yaml
+    @echo ""
+    @echo "6️⃣  PostgreSQL Service 생성..."
+    kubectl apply -f {{ manifests_dir }}/postgres-service.yaml
+    @echo "⏳ PostgreSQL 시작 대기 (30초)..."
+    sleep 30
+    @echo ""
+    @echo "7️⃣  n8n PVC 생성..."
+    kubectl apply -f {{ manifests_dir }}/n8n-pvc.yaml
+    @echo "⏳ PVC 생성 대기 (5초)..."
+    sleep 5
+    @echo ""
+    @echo "8️⃣  n8n Deployment 생성..."
+    kubectl apply -f {{ manifests_dir }}/n8n-deployment.yaml
+    @echo ""
+    @echo "9️⃣  n8n Service 생성..."
+    kubectl apply -f {{ manifests_dir }}/n8n-service.yaml
+    @echo ""
+    @echo "🔟 n8n Ingress 생성..."
+    kubectl apply -f {{ manifests_dir }}/n8n-ingress.yaml
+    @echo ""
+    @echo "✅ n8n 설치 완료!"
+    @echo ""
+    @echo "📊 상태 확인: just status"
+    @echo "🌐 Ingress 접속: http://n8n.moseoh.com"
+    @echo "🌐 로컬 접속: just port-forward"
+
+# n8n 전체 삭제
+uninstall:
+    @echo "🗑️  n8n 삭제 시작..."
+    kubectl delete -f {{ manifests_dir }}/n8n-ingress.yaml --ignore-not-found=true
+    kubectl delete -f {{ manifests_dir }}/n8n-service.yaml --ignore-not-found=true
+    kubectl delete -f {{ manifests_dir }}/n8n-deployment.yaml --ignore-not-found=true
+    kubectl delete -f {{ manifests_dir }}/n8n-pvc.yaml --ignore-not-found=true
+    kubectl delete -f {{ manifests_dir }}/postgres-service.yaml --ignore-not-found=true
+    kubectl delete -f {{ manifests_dir }}/postgres-deployment.yaml --ignore-not-found=true
+    kubectl delete -f {{ manifests_dir }}/postgres-pvc.yaml --ignore-not-found=true
+    kubectl delete -f {{ manifests_dir }}/postgres-configmap.yaml --ignore-not-found=true
+    kubectl delete secret postgres-secret -n {{ namespace }} --ignore-not-found=true
+    kubectl delete namespace {{ namespace }} --ignore-not-found=true
+    @echo "✅ n8n 삭제 완료!"
+
+# 재설치 (삭제 후 설치)
+reinstall: uninstall
+    @echo "⏳ 리소스 정리 대기 (10초)..."
+    sleep 10
+    just install
+
+# ============================================================
+# 상태 확인
+# ============================================================
+
+# n8n 전체 상태 확인
+status:
+    @echo "=== Namespace ==="
+    kubectl get namespace {{ namespace }} 2>/dev/null || echo "❌ Namespace not found"
+    @echo ""
+    @echo "=== PostgreSQL Resources ==="
+    kubectl get deployment,service,pvc -n {{ namespace }} -l app=postgres 2>/dev/null || echo "❌ PostgreSQL resources not found"
+    @echo ""
+    @echo "=== n8n Resources ==="
+    kubectl get deployment,service,pvc -n {{ namespace }} -l app=n8n 2>/dev/null || echo "❌ n8n resources not found"
+    @echo ""
+    @echo "=== Ingress ==="
+    kubectl get ingress -n {{ namespace }} 2>/dev/null || echo "❌ Ingress not found"
+    @echo ""
+    @echo "=== All Pods ==="
+    kubectl get pods -n {{ namespace }} -o wide
+
+# PostgreSQL 상태 확인
+status-postgres:
+    @echo "=== PostgreSQL Status ==="
+    kubectl get deployment,service,pvc,pods -n {{ namespace }} -l app=postgres
+
+# n8n 상태 확인
+status-n8n:
+    @echo "=== n8n Status ==="
+    kubectl get deployment,service,pvc,pods -n {{ namespace }} -l app=n8n
+
+# ============================================================
+# 로그 확인
+# ============================================================
+
+# n8n 로그 확인
+logs:
+    kubectl logs -n {{ namespace }} -l app=n8n --tail=50 -f
+
+# PostgreSQL 로그 확인
+logs-postgres:
+    kubectl logs -n {{ namespace }} -l app=postgres --tail=50 -f
+
+# 모든 Pod 로그 확인
+logs-all:
+    kubectl logs -n {{ namespace }} --all-containers=true --tail=50 -f
+
+# ============================================================
+# 접속 및 관리
+# ============================================================
+
+# n8n 포트 포워딩 (로컬 접속용)
+port-forward:
+    @echo "🌐 n8n 포트 포워딩 시작..."
+    @echo "접속 URL: http://localhost:5678"
+    kubectl port-forward -n {{ namespace }} svc/n8n 5678:80
+
+# n8n 포트 포워딩 대체 (Pod 직접)
+port-forward-pod:
+    @echo "🌐 n8n Pod 포트 포워딩 시작..."
+    @echo "접속 URL: http://localhost:5678"
+    kubectl port-forward -n {{ namespace }} deployment/n8n 5678:5678
+
+# PostgreSQL 포트 포워딩 (디버깅용)
+port-forward-postgres:
+    @echo "🗄️  PostgreSQL 포트 포워딩 시작..."
+    @echo "접속: psql -h localhost -p 5432 -U n8n n8n"
+    kubectl port-forward -n {{ namespace }} svc/postgres 5432:5432
+
+# n8n Pod에 Shell 접속
+shell:
+    kubectl exec -it -n {{ namespace }} deployment/n8n -- /bin/sh
+
+# PostgreSQL Pod에 Shell 접속
+shell-postgres:
+    kubectl exec -it -n {{ namespace }} deployment/postgres -- /bin/bash
+
+# ============================================================
+# 설정 관리
+# ============================================================
+
+# Secret 확인 (base64 디코딩)
+show-secrets:
+    @echo "=== PostgreSQL Secrets ==="
+    kubectl get secret postgres-secret -n {{ namespace }} -o jsonpath='{.data.POSTGRES_PASSWORD}' | base64 -d
+    @echo ""
+
+# ConfigMap 확인
+show-configmap:
+    @echo "=== PostgreSQL ConfigMap ==="
+    kubectl get configmap postgres-configmap -n {{ namespace }} -o yaml
+
+# ============================================================
+# 문제 해결
+# ============================================================
+
+# Pod 재시작
+restart:
+    @echo "🔄 n8n Pod 재시작..."
+    kubectl rollout restart deployment/n8n -n {{ namespace }}
+    @echo "✅ 재시작 완료! 상태 확인: just status"
+
+# PostgreSQL Pod 재시작
+restart-postgres:
+    @echo "🔄 PostgreSQL Pod 재시작..."
+    kubectl rollout restart deployment/postgres -n {{ namespace }}
+    @echo "✅ 재시작 완료! 상태 확인: just status-postgres"
+
+# Pod 이벤트 확인
+events:
+    kubectl get events -n {{ namespace }} --sort-by='.lastTimestamp'
+
+# Pod describe (상세 정보)
+describe:
+    @echo "=== n8n Deployment ==="
+    kubectl describe deployment n8n -n {{ namespace }}
+    @echo ""
+    @echo "=== n8n Pods ==="
+    kubectl describe pods -n {{ namespace }} -l app=n8n
