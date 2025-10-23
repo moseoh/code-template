@@ -4,16 +4,17 @@ import path from "path";
 import chalk from "chalk";
 
 export class AutoThumbnailGenerator {
-  constructor() {
+  constructor(configPath = "./config.json") {
     this.config = null;
+    this.configPath = configPath;
   }
 
   async loadConfig() {
     try {
-      const configData = await fs.readFile("./config.json", "utf-8");
+      const configData = await fs.readFile(this.configPath, "utf-8");
       this.config = JSON.parse(configData);
     } catch (error) {
-      throw new Error("config.json 파일을 읽을 수 없습니다");
+      throw new Error(`${this.configPath} 파일을 읽을 수 없습니다`);
     }
   }
 
