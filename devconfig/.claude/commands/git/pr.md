@@ -10,12 +10,16 @@
    git fetch
    git log origin/main..HEAD --oneline
 ```
-2. PR 제목과 본문은 아래 규칙과 형식을 반드시 준수한다.
-3. GitHub CLI를 사용하여 PR을 생성한다.
+2. 브랜치를 원격 저장소에 push 한다
+```bash
+   git push -u origin $(git branch --show-current)
+```
+3. PR 제목과 본문은 아래 규칙과 형식을 반드시 준수한다.
+4. GitHub CLI를 사용하여 PR을 생성한다.
 ```bash
    gh pr create --title "<type>[scope]: <description>" --body "<body-content>"
 ```
-4. 각 PR 작성 후, 결과가 요구된 형식과 일치하는지 1-2줄로 검증하고 필요시 수정하여 진행한다.
+5. 각 PR 작성 후, 결과가 요구된 형식과 일치하는지 1-2줄로 검증하고 필요시 수정하여 진행한다.
 </instructions>
 
 <priority_rules>
