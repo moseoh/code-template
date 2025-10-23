@@ -9,7 +9,7 @@
    ```bash
    git branch --show-current
    ```
-2. 현재 브랜치가 main 또는 master인 경우 새 기능 브랜치를 생성한다.
+2. 현재 브랜치가 main인 경우 새 기능 브랜치를 생성한다.
    ```bash
    git checkout -b <type>/<description>
    ```
