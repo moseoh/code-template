@@ -31,6 +31,10 @@ spec:
             - -c
             - sleep 5; n8n start
           env:
+            - name: GENERIC_TIMEZONE
+              value: Asia/Seoul
+            - name: TZ
+              value: Asia/Seoul
             - name: DB_TYPE
               value: postgresdb
             - name: DB_POSTGRESDB_HOST
@@ -49,11 +53,9 @@ spec:
                 secretKeyRef:
                   name: postgres-secret
                   key: POSTGRES_NON_ROOT_PASSWORD
-            - name: N8N_PROTOCOL
-              value: http
-            - name: N8N_PORT
-              value: "5678"
-          image: n8nio/n8n
+            - name: WEBHOOK_URL
+              value: https://n8n.moseoh.com/
+          image: n8nio/n8n:stable
           name: n8n
           ports:
             - containerPort: 5678
