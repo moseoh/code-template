@@ -7,72 +7,8 @@
 _default:
     @just --list
 
-# ============================================================
-# Infrastructure 모듈
-# ============================================================
-
-# NFS Provisioner 관리
-mod nfs 'infrastructure/nfs-provisioner'
-
-# ============================================================
-# Applications 모듈
-# ============================================================
-
-# SigNoz 모니터링 관리
-mod signoz 'applications/signoz'
-
 # Kubeflow 관리
 mod kubeflow 'applications/kubeflow'
 
-# n8n 워크플로우 자동화 관리
-mod n8n 'applications/n8n'
-
-# ============================================================
-# 전체 리소스 상태 확인
-# ============================================================
-
-# 모든 네임스페이스 상태 확인
-[group('전체')]
-status-all:
-    @echo "=== All Namespaces ==="
-    kubectl get namespaces
-    @echo "\n=== All Pods ==="
-    kubectl get pods -A
-    @echo "\n=== All Services ==="
-    kubectl get svc -A
-    @echo "\n=== Storage Classes ==="
-    kubectl get storageclass
-
-# 모든 Helm releases 확인
-[group('전체')]
-helm-list:
-    @echo "=== All Helm Releases ==="
-    helm list -A
-
-# ============================================================
-# 빠른 접근 명령어
-# ============================================================
-
-# NFS Provisioner 설치
-[group('빠른접근')]
-install-nfs:
-    @echo "📁 NFS Provisioner 설치..."
-    cd infrastructure/nfs-provisioner && just install
-
-# SigNoz 설치
-[group('빠른접근')]
-install-signoz:
-    @echo "📊 SigNoz 설치..."
-    cd applications/signoz && just install
-
-# Kubeflow 설치
-[group('빠른접근')]
-install-kubeflow:
-    @echo "🤖 Kubeflow 설치..."
-    cd applications/kubeflow && just install
-
-# n8n 설치
-[group('빠른접근')]
-install-n8n:
-    @echo "⚡ n8n 설치..."
-    cd applications/n8n && just install
+# ArgoCd 관리
+mod n8n 'applications/argo'
