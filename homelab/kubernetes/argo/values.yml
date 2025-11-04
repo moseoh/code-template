@@ -1,0 +1,29 @@
+# argocd-values.yaml
+global:
+  domain: argocd.moseoh.com # ArgoCD 도메인 설정
+
+server:
+  # Ingress 설정
+  ingress:
+    enabled: true
+    ingressClassName: traefik # k3s Traefik 사용
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: web
+    hosts:
+      - argocd.moseoh.com
+    paths:
+      - /
+    pathType: Prefix
+
+  # Cloudflare Flexible SSL 모드 대응
+  # ArgoCD가 HTTP로 작동하도록 설정
+  insecure: true # HTTP 모드로 실행
+
+# 선택사항: ArgoCD 대시보드 설정
+configs:
+  params:
+    server.insecure: true # HTTPS 리다이렉트 비활성화
+
+  cm:
+    # Cloudflare에서 오는 요청을 신뢰
+    url: "http://argocd.moseoh.com" # HTTP로 설정

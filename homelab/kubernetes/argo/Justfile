@@ -1,0 +1,66 @@
+# ArgoCD 관리 명령어
+
+# Helm 저장소 이름
+NAMESPACE := "argocd"
+
+# 도움말 표시
+_default:
+    @just --list
+
+
+# ArgoCD 설치
+install:
+    @echo "📦 ArgoCD 설치 중..."
+    helm repo add argo https://argoproj.github.io/argo-helm || true
+    helm repo update
+    helm upgrade --install argocd argo/argo-cd \
+        --create-namespace \
+        --namespace {{NAMESPACE}} \
+        --values values.yml \
+        --wait
+    @echo "✅ ArgoCD 설치 완료!"
+    @echo ""
+    @echo "🔑 초기 admin 패스워드 확인:"
+    @echo "kubectl -n {{NAMESPACE}} get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d && echo"
+
+# ArgoCD 제거
+uninstall:
+    @echo "🗑️  ArgoCD 제거 중..."
+    helm uninstall argocd --namespace {{NAMESPACE}}
+    @echo "✅ ArgoCD 제거 완료"
+
+# ArgoCD 업그레이드
+upgrade:
+    @echo "⬆️  ArgoCD 업그레이드 중..."
+    helm repo update
+    helm upgrade argocd argo/argo-cd \
+        --namespace {{NAMESPACE}} \
+        --values values.yml \
+        --wait
+    @echo "✅ ArgoCD 업그레이드 완료"
+
+# ArgoCD 상태 확인
+status:
+    @echo "📊 ArgoCD 상태 확인..."
+    @echo ""
+    @echo "=== Helm Release ==="
+    helm status argocd -n {{NAMESPACE}}
+    @echo ""
+    @echo "=== Pods ==="
+    kubectl get pods -n {{NAMESPACE}}
+    @echo ""
+    @echo "=== Services ==="
+    kubectl get svc -n {{NAMESPACE}}
+    @echo ""
+    @echo "=== Ingress ==="
+    kubectl get ingress -n {{NAMESPACE}}
+
+# 초기 admin 패스워드 확인
+get-password:
+    @echo "🔑 ArgoCD 초기 admin 패스워드:"
+    @kubectl -n {{NAMESPACE}} get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' | base64 -d && echo
+
+# ArgoCD UI에 포트포워딩
+port-forward:
+    @echo "🌐 ArgoCD UI 포트포워딩 시작 (http://localhost:8080)"
+    kubectl port-forward svc/argocd-server -n {{NAMESPACE}} 8080:80
