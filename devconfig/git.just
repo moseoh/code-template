@@ -170,7 +170,7 @@ update-ruleset:
     echo "🎉 GitHub repository ruleset 설정이 완료되었습니다!"
     echo "🌐 확인: https://github.com/$REPO_PATH/settings/rules"
 
-# Alias clean-merged-branches
+# Alias clean-branches
 [group('git')]
 cleanb: clean-branches
 
@@ -192,3 +192,26 @@ clean-branches:
     echo ""
     echo "=================================================="
     echo "🎉 브랜치 정리 완료!"
+
+# Alias quick-push
+[group('git')]
+qp: quick-push
+
+# 빠른 push
+[group('git')]
+quick-push:
+    #!/usr/bin/env bash
+    set -euo pipefail
+
+    echo "🧹 빠른 푸쉬 중..."
+    echo "=================================================="
+    echo ""
+
+    git pull
+    git add .
+    git commit -m "update"
+    git push
+
+    echo ""
+    echo "=================================================="
+    echo "🎉 빠른 푸쉬 완료!"
