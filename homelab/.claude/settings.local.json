@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "mcp__Context7__resolve-library-id",
+      "mcp__Context7__get-library-docs",
+      "mcp__sequential-thinking__sequentialthinking",
+      "Bash(git push:*)",
+      "Bash(gh pr create:*)",
+      "Bash(git checkout:*)",
+      "Bash(git add:*)",
+      "Bash(git rm:*)",
+      "Bash(mkdir:*)",
+      "mcp__filesystem__list_directory",
+      "mcp__filesystem__read_text_file",
+      "Bash(tree:*)",
+      "Bash(just:*)",
+      "WebFetch(domain:github.com)",
+      "Bash(cp:*)",
+      "Bash(mv:*)"
+    ],
+    "deny": []
+  }
+}
