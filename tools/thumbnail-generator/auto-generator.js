@@ -4,7 +4,7 @@ import path from "path";
 import chalk from "chalk";
 
 export class AutoThumbnailGenerator {
-  constructor(configPath = "./config.json") {
+  constructor(configPath) {
     this.config = null;
     this.configPath = configPath;
   }
@@ -38,7 +38,7 @@ export class AutoThumbnailGenerator {
 
     if (parts.length < 2) {
       throw new Error(
-        `파일명 형식이 올바르지 않습니다: ${fileName}. 형식: {로고이름}-{배경색상} 또는 {로고이름}-{로고색상}-{배경색상}`
+        `파일명 형식이 올바르지 않습니다: ${fileName}. 형식: {로고이름}-{배경색상} 또는 {로고이름}-{로고색상}-{배경색상}`,
       );
     }
 
@@ -117,7 +117,7 @@ export class AutoThumbnailGenerator {
       svgContent = svgContent.replace(/<sfw[^>]*>[\s\S]*?<\/sfw>/g, "");
       svgContent = svgContent.replace(
         /<metadata[^>]*>[\s\S]*?<\/metadata>/g,
-        ""
+        "",
       );
 
       // SVG의 fill 속성을 로고 색상으로 변경
@@ -127,18 +127,18 @@ export class AutoThumbnailGenerator {
       // CSS 스타일에서 fill 색상 변경
       svgContent = svgContent.replace(
         /\.st\d+\s*\{\s*fill:\s*[^;}]+\s*;\s*\}/g,
-        `.st0{fill:${logoColor};}`
+        `.st0{fill:${logoColor};}`,
       );
 
       // stroke 색상도 변경 (선택적)
       if (svgContent.includes("stroke=")) {
         svgContent = svgContent.replace(
           /stroke="[^"]*"/g,
-          `stroke="${logoColor}"`
+          `stroke="${logoColor}"`,
         );
         svgContent = svgContent.replace(
           /stroke:[^;"]*/g,
-          `stroke:${logoColor}`
+          `stroke:${logoColor}`,
         );
       }
 
@@ -164,10 +164,10 @@ export class AutoThumbnailGenerator {
 
       // config에서 설정한 비율로 최대 크기 계산
       const maxHeight = Math.round(
-        dimensions.height * this.config.logo.heightRatio
+        dimensions.height * this.config.logo.heightRatio,
       );
       const maxWidth = Math.round(
-        dimensions.width * this.config.logo.widthRatio
+        dimensions.width * this.config.logo.widthRatio,
       );
 
       let resizedLogo;
@@ -196,10 +196,10 @@ export class AutoThumbnailGenerator {
           {
             input: resizedLogo,
             left: Math.round(
-              (dimensions.width - resizedLogoMetadata.width) / 2
+              (dimensions.width - resizedLogoMetadata.width) / 2,
             ),
             top: Math.round(
-              (dimensions.height - resizedLogoMetadata.height) / 2
+              (dimensions.height - resizedLogoMetadata.height) / 2,
             ),
           },
         ])
@@ -236,8 +236,8 @@ export class AutoThumbnailGenerator {
       if (error.code === "ENOENT") {
         console.log(
           chalk.yellow(
-            `⚠️  타겟 경로가 존재하지 않아 복사를 건너뜁니다: ${this.config.paths.target}`
-          )
+            `⚠️  타겟 경로가 존재하지 않아 복사를 건너뜁니다: ${this.config.paths.target}`,
+          ),
         );
         return null;
       }
@@ -254,14 +254,18 @@ export class AutoThumbnailGenerator {
         chalk.gray(
           `설정: ${this.config.thumbnail.width}x${
             this.calculateDimensions().height
-          } (${this.config.thumbnail.ratio})`
-        )
+          } (${this.config.thumbnail.ratio})`,
+        ),
       );
 
       const assetFiles = await this.scanAssetsFolder();
 
       if (assetFiles.length === 0) {
-        console.log(chalk.yellow("⚠️  assets 폴더에 이미지 파일이 없습니다."));
+        console.log(
+          chalk.yellow(
+            `⚠️  ${this.config.paths.assets} 폴더에 이미지 파일이 없습니다.`,
+          ),
+        );
         return;
       }
 
@@ -277,13 +281,15 @@ export class AutoThumbnailGenerator {
           const outputFileName = `${parsed.logoName}.png`;
           const outputPath = path.join(
             this.config.paths.output,
-            outputFileName
+            outputFileName,
           );
 
           // 파일이 이미 존재하는지 확인
           try {
             await fs.access(outputPath);
-            console.log(chalk.yellow(`⏭️  스킵: ${outputFileName} (이미 존재)`));
+            console.log(
+              chalk.yellow(`⏭️  스킵: ${outputFileName} (이미 존재)`),
+            );
             successCount++;
             continue;
           } catch {
@@ -295,20 +301,20 @@ export class AutoThumbnailGenerator {
             : "";
           console.log(
             chalk.cyan(
-              `📸 생성 중: ${parsed.logoName} (${logoColorText}배경: ${parsed.backgroundColor})`
-            )
+              `📸 생성 중: ${parsed.logoName} (${logoColorText}배경: ${parsed.backgroundColor})`,
+            ),
           );
 
           const result = await this.generateThumbnail(
             logoPath,
             parsed.logoColor,
             parsed.backgroundColor,
-            outputPath
+            outputPath,
           );
 
           const targetPath = await this.copyToTarget(
             outputPath,
-            outputFileName
+            outputFileName,
           );
 
           console.log(chalk.green(`✅ 완료: ${outputFileName}`));

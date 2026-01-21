@@ -7,7 +7,6 @@
   "scripts": {
     "start": "node generate.js",
     "generate": "node generate.js",
-    "bookreport": "node generate.js -c ./config-bookreport.json",
     "dev": "node --watch generate.js"
   },
   "keywords": ["thumbnail", "image", "generator", "logo"],

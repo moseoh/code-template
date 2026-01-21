@@ -6,7 +6,7 @@ assets 폴더의 로고 파일들을 자동으로 스캔하여 썸네일을 일�
 
 ### 1. 로고 파일 준비
 
-`assets/` 폴더에 다음 형식으로 로고 파일을 배치:
+`assets/logo`와 `assets/book-cover` 폴더에 다음 형식으로 로고 파일을 배치:
 
 ```
 {로고이름}-{로고색상}-{배경색상}.{확장자}
@@ -22,41 +22,22 @@ assets 폴더의 로고 파일들을 자동으로 스캔하여 썸네일을 일�
 
 ### 2. 실행
 
-#### 기본 실행 (config.json 사용)
+#### 기본 실행 (logo/book-cover 모두 처리)
 
 ```bash
 npm start
 ```
 
-#### 커스텀 config 파일 사용
-
-```bash
-# 전용 스크립트 사용 (추천)
-npm run bookreport
-
-# 직접 node 실행
-node generate.js -c ./config-bookreport.json
-node generate.js --config ./config-custom.json
-
-# 도움말 확인
-node generate.js --help
-```
-
-#### CLI 옵션
-
-- `-c, --config <path>`: 사용할 config 파일 경로 지정 (기본값: `./config.json`)
-- `-h, --help`: 도움말 표시
-
 ### 3. 결과
 
-- `output/` 폴더에 PNG 썸네일 생성
+- `output/logo`, `output/book-cover` 폴더에 PNG 썸네일 생성
 - 타겟 경로가 설정되어 있으면 자동 복사
 
 ## 설정 파일
 
-### 기본 설정 (config.json)
+### 기본 설정 (config/logo.json)
 
-프로젝트의 기본 설정 파일입니다.
+프로젝트의 로고 썸네일 설정 파일입니다.
 
 ```json
 {
@@ -71,8 +52,8 @@ node generate.js --help
     "defaultColor": "#000000"
   },
   "paths": {
-    "assets": "./assets",
-    "output": "./output",
+    "assets": "./assets/logo",
+    "output": "./output/logo",
     "target": "/path/to/target/directory"
   },
   "fileConvention": {
@@ -82,22 +63,22 @@ node generate.js --help
 }
 ```
 
-### 커스텀 설정 파일
+### 책 표지 설정 (config/book-cover.json)
 
-용도별로 다른 설정이 필요한 경우 커스텀 config 파일을 생성할 수 있습니다.
-
-**예시: config-bookreport.json (책 표지용)**
+책 표지 썸네일 전용 설정 파일입니다.
 
 ```json
 {
   "logo": {
-    "heightRatio": 0.7,  // 책표지는 로고를 더 크게
+    "heightRatio": 0.7,
     "widthRatio": 0.7
+  },
+  "paths": {
+    "assets": "./assets/book-cover",
+    "output": "./output/book-cover"
   }
 }
 ```
-
-커스텀 config 파일은 필요한 부분만 작성하면 되며, 나머지는 기본값이 사용됩니다.
 
 ## 지원 색상 형식
 
@@ -114,20 +95,9 @@ node generate.js --help
 
 | 명령어 | 설명 |
 |--------|------|
-| `npm start` | 기본 config.json으로 썸네일 생성 |
+| `npm start` | 로고/책표지 썸네일 생성 |
 | `npm run generate` | start와 동일 |
-| `npm run bookreport` | config-bookreport.json으로 썸네일 생성 |
 | `npm run dev` | watch 모드로 실행 (파일 변경 감지) |
-
-새로운 config 파일을 위한 스크립트를 추가하려면 `package.json`의 `scripts` 섹션에 추가하세요:
-
-```json
-{
-  "scripts": {
-    "custom": "node generate.js -c ./config-custom.json"
-  }
-}
-```
 
 ## 자동화 기능
 
